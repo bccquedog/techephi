@@ -3049,6 +3049,7 @@ const NotificationAnalyticsView = () => {
 const NotificationTestCenter = () => {
   const { createNotification, sendBulkNotification } = useNotifications();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [testData, setTestData] = useState({
     type: 'message',
     urgency: 'normal',
@@ -3059,9 +3060,9 @@ const NotificationTestCenter = () => {
   const sendTestNotification = async () => {
     try {
       await createNotification(testData);
-      alert('Test notification sent successfully!');
+      showSuccess('Test notification sent successfully!');
     } catch (error) {
-      alert('Failed to send test notification: ' + error.message);
+      showError('Failed to send test notification: ' + error.message);
     }
   };
 
@@ -3069,12 +3070,12 @@ const NotificationTestCenter = () => {
     try {
       const success = await pushNotificationService.sendTestNotification();
       if (success) {
-        alert('Push notification test sent successfully!');
+        showSuccess('Push notification test sent successfully!');
       } else {
-        alert('Failed to send push notification test');
+        showError('Failed to send push notification test');
       }
     } catch (error) {
-      alert('Failed to send push notification test: ' + error.message);
+      showError('Failed to send push notification test: ' + error.message);
     }
   };
 
@@ -3609,6 +3610,7 @@ const TimelineView = ({ userRole }) => {
 };
 
 const EventModal = ({ isOpen, onClose, event, onSubmit, userRole }) => {
+  const { showError } = useToast();
   const [formData, setFormData] = useState({
     title: '',
     jobId: '',
@@ -3721,7 +3723,7 @@ const EventModal = ({ isOpen, onClose, event, onSubmit, userRole }) => {
     e.preventDefault();
     
     if (conflictCheck && conflictCheck.length > 0) {
-      alert('Schedule conflict detected. Please choose a different time.');
+      showError('Schedule conflict detected. Please choose a different time.');
       return;
     }
 
@@ -3956,6 +3958,7 @@ const EventModal = ({ isOpen, onClose, event, onSubmit, userRole }) => {
 // Client Booking Portal
 const ClientBookingView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [selectedService, setSelectedService] = useState('');
   const [selectedContractor, setSelectedContractor] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -3998,7 +4001,7 @@ const ClientBookingView = () => {
       setContractors(contractorsData);
     } catch (error) {
       console.error('Error loading contractors:', error);
-      alert('Failed to load contractors. Please refresh the page.');
+      showError('Failed to load contractors. Please refresh the page.');
     }
   };
 
@@ -4021,11 +4024,11 @@ const ClientBookingView = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        alert('No available time slots for the selected date and contractor. Please try a different date or contractor.');
+        showError('No available time slots for the selected date and contractor. Please try a different date or contractor.');
       }
     } catch (error) {
       console.error('Error loading available slots:', error);
-      alert('Failed to load available time slots. Please try again.');
+      showError('Failed to load available time slots. Please try again.');
       setAvailableSlots([]);
     } finally {
       setLoading(false);
@@ -4034,35 +4037,35 @@ const ClientBookingView = () => {
 
   const handleBookAppointment = async () => {
     if (!selectedService) {
-      alert('Please select a service');
+      showError('Please select a service');
       return;
     }
 
     if (!selectedContractor || selectedContractor === '') {
-      alert('Please select a technician');
+      showError('Please select a technician');
       return;
     }
 
     if (!selectedSlot) {
-      alert('Please select a time slot');
+      showError('Please select a time slot');
       return;
     }
 
     if (!user?.email) {
-      alert('You must be logged in to book an appointment');
+      showError('You must be logged in to book an appointment');
       return;
     }
 
     const service = services.find(s => s.id === selectedService);
     if (!service) {
-      alert('Please select a valid service');
+      showError('Please select a valid service');
       return;
     }
 
     const contractor = contractors.find(c => c.email === selectedContractor);
     
     if (!contractor) {
-      alert('Selected contractor not found. Please select a different technician.');
+      showError('Selected contractor not found. Please select a different technician.');
       return;
     }
 
@@ -4104,10 +4107,10 @@ const ClientBookingView = () => {
         urgency: 'normal'
       });
 
-      alert('Appointment booked successfully! You will receive a confirmation shortly.');
+      showSuccess('Appointment booked successfully! You will receive a confirmation shortly.');
     } catch (error) {
       console.error('Error booking appointment:', error);
-      alert(error.message || 'Failed to book appointment. Please try again.');
+      showError(error.message || 'Failed to book appointment. Please try again.');
     }
   };
 
@@ -4607,6 +4610,7 @@ const AnalyticsView = () => {
 // File Management Components
 const FileManagementView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
@@ -4644,18 +4648,22 @@ const FileManagementView = () => {
         ...fileData,
         uploadedBy: user?.email
       });
+      showSuccess('File uploaded successfully!');
       loadFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
+      showError(error.message || 'Failed to upload file. Please try again.');
     }
   };
 
   const handleDeleteFile = async (fileId) => {
     try {
       await firebase.deleteFile(fileId);
+      showSuccess('File deleted successfully!');
       loadFiles();
     } catch (error) {
       console.error('Error deleting file:', error);
+      showError(error.message || 'Failed to delete file. Please try again.');
     }
   };
 
@@ -4670,12 +4678,12 @@ const FileManagementView = () => {
         if (fileUrl) {
           window.open(fileUrl, '_blank');
         } else {
-          alert('File download not available');
+          showError('File download not available');
         }
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      alert('Error downloading file. Please try again.');
+      showError('Error downloading file. Please try again.');
     }
   };
 
@@ -6559,9 +6567,11 @@ const InvoicesView = () => {
   const handlePayInvoice = async (invoiceId) => {
     try {
       await firebase.updateInvoiceStatus(invoiceId, 'paid', new Date().toISOString());
+      showSuccess('Invoice marked as paid successfully!');
       loadInvoices();
     } catch (error) {
       console.error('Error updating invoice:', error);
+      showError(error.message || 'Failed to update invoice status. Please try again.');
     }
   };
 
@@ -6783,6 +6793,7 @@ const InvoicesView = () => {
 };
 
 const CreateInvoiceModal = ({ isOpen, onClose, onSubmit }) => {
+  const { showError } = useToast();
   const [formData, setFormData] = useState({
     jobId: '',
     clientName: '',
@@ -6887,7 +6898,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSubmit }) => {
     
     // Validate that client info is provided for standalone invoices
     if (!formData.jobId && (!formData.clientName || !formData.clientEmail)) {
-      alert('Please provide client name and email for standalone invoices, or select a job.');
+      showError('Please provide client name and email for standalone invoices, or select a job.');
       return;
     }
     
