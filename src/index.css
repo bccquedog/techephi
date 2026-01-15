@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Tech ePhi Brand Colors - Ensure they're always applied */
+@layer base {
+  :root {
+    --techephi-primary: #3B0A69;
+    --techephi-secondary: #8b5cf6;
+    --techephi-accent: #a78bfa;
+    --techephi-gold: #C5A100; /* Old gold */
+  }
+}
+
+@layer components {
+  /* Ensure gradient backgrounds work properly */
+  .bg-gradient-techephi {
+    background: linear-gradient(135deg, var(--techephi-primary) 0%, var(--techephi-secondary) 100%);
+  }
+  
+  .bg-gradient-techephi-hero {
+    background: linear-gradient(135deg, var(--techephi-primary) 0%, #7e22ce 50%, #581c87 100%);
+  }
+  
+  /* Ensure text colors are applied */
+  .text-techephi-primary {
+    color: var(--techephi-primary) !important;
+  }
+  
+  .text-techephi-secondary {
+    color: var(--techephi-secondary) !important;
+  }
+  
+  /* Ensure border colors are applied */
+  .border-techephi-primary {
+    border-color: var(--techephi-primary) !important;
+  }
+  
+  /* Ensure focus ring colors are applied */
+  .focus\:ring-techephi-primary:focus {
+    --tw-ring-color: var(--techephi-primary) !important;
+  }
+}

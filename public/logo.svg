@@ -1,0 +1,13 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="30" cy="30" r="25" fill="#3B0A69"/>
+  
+  <!-- Tech icon -->
+  <path d="M20 20 L40 20 L40 40 L20 40 Z" fill="#FFD700"/>
+  <circle cx="30" cy="30" r="8" fill="#3B0A69"/>
+  <circle cx="30" cy="30" r="4" fill="#FFD700"/>
+  
+  <!-- Text -->
+  <text x="70" y="25" font-family="Poppins, sans-serif" font-size="18" font-weight="700" fill="#3B0A69">TECH</text>
+  <text x="70" y="45" font-family="Poppins, sans-serif" font-size="18" font-weight="700" fill="#FFD700">EPHI</text>
+</svg> 

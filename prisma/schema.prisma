@@ -1,0 +1,503 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  displayName       String?
+  role              UserRole  @default(CLIENT)
+  phone             String?
+  avatar            String?
+  password          String?   // Hashed password for authentication
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime?
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  profile     UserProfile?
+  jobs        Job[]        @relation("JobClient")
+  assignedJobs Job[]       @relation("JobContractor")
+  invoices    Invoice[]    @relation("InvoiceClient")
+  createdInvoices Invoice[] @relation("InvoiceCreator")
+  notifications Notification[]
+  messages    Message[]    @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageReceiver")
+  timeEntries TimeEntry[]
+  uploadedFiles File[]     @relation("FileUploader")
+  clientFiles File[]       @relation("FileClient")
+  assignedTasks Task[]     @relation("TaskAssignee")
+  events      Event[]      @relation("EventCreator")
+  assignedEvents Event[]   @relation("EventAssignee")
+  auditLogs   AuditLog[]
+  refreshTokens RefreshToken[]
+  passwordResets PasswordReset[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  company     String?
+  position    String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  website     String?
+  bio         String?
+  specialties String   // JSON string for SQLite
+  hourlyRate  Float?
+  availability Json?    // JSON object for availability schedule
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+enum UserRole {
+  ADMIN
+  CONTRACTOR
+  CLIENT
+}
+
+// Job Management
+model Job {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  status          JobStatus   @default(PENDING)
+  priority        Priority    @default(MEDIUM)
+  estimatedHours  Float?
+  actualHours     Float?
+  budget          Float?
+  startDate       DateTime?
+  dueDate         DateTime?
+  completedDate   DateTime?
+  location        String?
+  clientId        String
+  contractorId    String?
+  progress        Int         @default(0) // 0-100
+  tags            String      // JSON string for SQLite
+  attachments     String      // JSON string for SQLite
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  client          User        @relation("JobClient", fields: [clientId], references: [id])
+  contractor      User?       @relation("JobContractor", fields: [contractorId], references: [id])
+  tasks           Task[]
+  invoices        Invoice[]
+  timeEntries     TimeEntry[]
+  files           File[]
+  events          Event[]
+
+  @@map("jobs")
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Task Management
+model Task {
+  id              String      @id @default(cuid())
+  jobId           String
+  title           String
+  description     String?
+  status          TaskStatus  @default(PENDING)
+  priority        Priority    @default(MEDIUM)
+  assignedTo      String?
+  estimatedHours  Float?
+  actualHours     Float?
+  progress        Int         @default(0)
+  startDate       DateTime?
+  dueDate         DateTime?
+  completedDate   DateTime?
+  weight          Int         @default(1)
+  dependencies    String      // JSON string for SQLite
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  job             Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assignee        User?       @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  timeEntries     TimeEntry[]
+
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  BLOCKED
+}
+
+// Invoice Management
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  jobId           String?
+  clientId        String
+  createdById     String
+  status          InvoiceStatus @default(DRAFT)
+  subtotal        Float
+  taxRate         Float         @default(0)
+  taxAmount       Float         @default(0)
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  dueDate         DateTime
+  paidDate        DateTime?
+  notes           String?
+  terms           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  job             Job?          @relation(fields: [jobId], references: [id])
+  client          User          @relation("InvoiceClient", fields: [clientId], references: [id])
+  createdBy       User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+  items           InvoiceItem[]
+  payments        Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  description     String
+  quantity        Float
+  rate            Float
+  amount          Float
+  createdAt       DateTime @default(now())
+
+  // Relations
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+  PARTIAL
+}
+
+// Payment Processing
+model Payment {
+  id              String        @id @default(cuid())
+  invoiceId       String
+  amount          Float
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       @unique
+  gateway         String?       // Stripe, PayPal, etc.
+  gatewayData     Json?         // Raw gateway response
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  PAYPAL
+  CASH
+  CHECK
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+// Time Tracking
+model TimeEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  jobId           String?
+  taskId          String?
+  description     String
+  hours           Float
+  date            DateTime
+  startTime       DateTime?
+  endTime         DateTime?
+  isBillable      Boolean  @default(true)
+  rate            Float?
+  amount          Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id])
+  job             Job?     @relation(fields: [jobId], references: [id])
+  task            Task?    @relation(fields: [taskId], references: [id])
+
+  @@map("time_entries")
+}
+
+// File Management
+model File {
+  id              String      @id @default(cuid())
+  name            String
+  originalName    String
+  size            Int
+  type            String
+  url             String
+  thumbnailUrl    String?
+  category        FileCategory
+  jobId           String?
+  uploadedById    String
+  clientAccess    Boolean     @default(false)
+  clientId        String?
+  description     String?
+  tags            String      // JSON string for SQLite
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  job             Job?        @relation(fields: [jobId], references: [id])
+  uploadedBy      User        @relation("FileUploader", fields: [uploadedById], references: [id])
+  client          User?       @relation("FileClient", fields: [clientId], references: [id])
+
+  @@map("files")
+}
+
+enum FileCategory {
+  DOCUMENTATION
+  REPORTS
+  CONFIGURATION
+  IMAGES
+  VIDEOS
+  OTHER
+}
+
+// Messaging System
+model Message {
+  id              String        @id @default(cuid())
+  senderId        String
+  receiverId      String
+  subject         String?
+  content         String
+  type            MessageType   @default(DIRECT)
+  status          MessageStatus @default(SENT)
+  readAt          DateTime?
+  repliedToId     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  sender          User          @relation("MessageSender", fields: [senderId], references: [id])
+  receiver        User          @relation("MessageReceiver", fields: [receiverId], references: [id])
+  repliedTo       Message?      @relation("MessageReplies", fields: [repliedToId], references: [id])
+  replies         Message[]     @relation("MessageReplies")
+
+  @@map("messages")
+}
+
+enum MessageType {
+  DIRECT
+  JOB_RELATED
+  SYSTEM
+  NOTIFICATION
+}
+
+enum MessageStatus {
+  DRAFT
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// Notification System
+model Notification {
+  id              String            @id @default(cuid())
+  userId          String
+  type            NotificationType
+  title           String
+  message         String
+  priority        NotificationPriority @default(NORMAL)
+  read            Boolean           @default(false)
+  readAt          DateTime?
+  actionUrl       String?
+  actionText      String?
+  data            Json?             // Additional data
+  deliveryStatus  Json?             // Email, SMS delivery status
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  JOB
+  INVOICE
+  MESSAGE
+  SYSTEM
+  REMINDER
+  PAYMENT
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// Calendar & Scheduling
+model Event {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  allDay          Boolean     @default(false)
+  type            EventType   @default(APPOINTMENT)
+  status          EventStatus @default(SCHEDULED)
+  location        String?
+  jobId           String?
+  createdById     String
+  assignedToId    String?
+  recurrence      String?     // JSON string for SQLite
+  attendees       String      // JSON string for SQLite
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  job             Job?        @relation(fields: [jobId], references: [id])
+  createdBy       User        @relation("EventCreator", fields: [createdById], references: [id])
+  assignedTo      User?       @relation("EventAssignee", fields: [assignedToId], references: [id])
+
+  @@map("events")
+}
+
+enum EventType {
+  APPOINTMENT
+  MEETING
+  TASK
+  REMINDER
+  HOLIDAY
+  OTHER
+}
+
+enum EventStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// System Configuration
+model SystemConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  description     String?
+  isPublic        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
+// Audit Log
+model AuditLog {
+  id              String      @id @default(cuid())
+  userId          String?
+  action          String
+  entityType      String
+  entityId        String?
+  oldValues       Json?
+  newValues       Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime    @default(now())
+
+  // Relations
+  user            User?       @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// Authentication & Session Management
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}

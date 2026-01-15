@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/bookforge",
+      "destination": "https://bookforge-tan.vercel.app/",
+      "permanent": false
+    },
+    {
+      "source": "/bookforge/:path*",
+      "destination": "https://bookforge-tan.vercel.app/:path*",
+      "permanent": false
+    }
+  ]
+}

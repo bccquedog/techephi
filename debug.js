@@ -1,0 +1,1 @@
+console.log('localStorage contents:'); console.log('currentUser:', localStorage.getItem('currentUser')); console.log('authToken:', localStorage.getItem('authToken')); console.log('techephi_crm_data_currentUser:', localStorage.getItem('techephi_crm_data_currentUser'));

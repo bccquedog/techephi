@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.vercel
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Vercel
+.vercel
+
+# Prisma
+/src/generated/prisma
+pglite-debug.log
+
+# Temporary files
+*.tmp
+*.temp
+clear-cache.html
+clear-storage.html
+
+# Documentation (optional - uncomment if you don't want to track docs)
+# techdoc/
