@@ -995,6 +995,7 @@ const ApprovalActionModal = ({ stage, onApprove, onReject }) => {
 // Enhanced Jobs View with Project Management
 const EnhancedJobsView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateJob, setShowCreateJob] = useState(false);
@@ -1037,12 +1038,30 @@ const EnhancedJobsView = () => {
     }
   };
 
-  const handleCreateJob = async (jobData) => {
+  const handleCreateJob = async (formData) => {
     try {
+      // Transform form data to match Firebase schema
+      const jobData = {
+        title: formData.title,
+        description: formData.description,
+        clientName: formData.client,
+        clientEmail: formData.clientEmail,
+        status: 'pending',
+        priority: formData.priority || 'medium',
+        dueDate: formData.dueDate || null,
+        totalAmount: formData.value ? parseFloat(formData.value) : null,
+        budget: formData.value ? parseFloat(formData.value) : null,
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : null,
+        progress: 0
+      };
+
       await firebase.createJob(jobData);
+      showSuccess('Job created successfully!');
       loadJobs();
+      setShowCreateJob(false);
     } catch (error) {
       console.error('Error creating job:', error);
+      showError(error.message || 'Failed to create job. Please try again.');
     }
   };
 
@@ -1179,6 +1198,7 @@ const EnhancedJobsView = () => {
 };// Enhanced Job Detail View with Task Management
 const JobDetailView = ({ jobId, onClose }) => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [job, setJob] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [milestones, setMilestones] = useState([]);
@@ -1209,6 +1229,7 @@ const JobDetailView = ({ jobId, onClose }) => {
       setApprovals(approvalsData);
     } catch (error) {
       console.error('Error loading job details:', error);
+      showError('Failed to load job details');
     } finally {
       setLoading(false);
     }
@@ -1217,18 +1238,22 @@ const JobDetailView = ({ jobId, onClose }) => {
   const handleTaskUpdate = async (taskId, updates) => {
     try {
       await firebase.updateTask(jobId, taskId, updates);
+      showSuccess('Task updated successfully!');
       loadJobDetails();
     } catch (error) {
       console.error('Error updating task:', error);
+      showError(error.message || 'Failed to update task. Please try again.');
     }
   };
 
   const handleCreateTask = async (taskData) => {
     try {
       await firebase.createTask(jobId, taskData);
+      showSuccess('Task created successfully!');
       loadJobDetails();
     } catch (error) {
       console.error('Error creating task:', error);
+      showError(error.message || 'Failed to create task. Please try again.');
     }
   };
 
@@ -2060,6 +2085,7 @@ const NotificationDropdown = () => {
 
 // Available Hours Management (Admin)
 const AvailableHoursManagement = () => {
+  const { showSuccess, showError } = useToast();
   const [contractors, setContractors] = useState([]);
   const [selectedContractor, setSelectedContractor] = useState('');
   const [availableHours, setAvailableHours] = useState({});
@@ -2163,17 +2189,17 @@ const AvailableHoursManagement = () => {
 
   const handleSave = async () => {
     if (!selectedContractor) {
-      alert('Please select a contractor');
+      showError('Please select a contractor');
       return;
     }
 
     setSaving(true);
     try {
       await firebase.setAvailableHours(selectedContractor, availableHours);
-      alert('Available hours saved successfully!');
+      showSuccess('Available hours saved successfully!');
     } catch (error) {
       console.error('Error saving available hours:', error);
-      alert('Failed to save available hours. Please try again.');
+      showError(error.message || 'Failed to save available hours. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -2290,6 +2316,7 @@ const AvailableHoursManagement = () => {
 
 // Specific Date Availability Management (Admin)
 const SpecificDateAvailabilityManagement = () => {
+  const { showSuccess, showError } = useToast();
   const [contractors, setContractors] = useState([]);
   const [selectedContractor, setSelectedContractor] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -2353,28 +2380,28 @@ const SpecificDateAvailabilityManagement = () => {
 
   const handleSaveDate = async () => {
     if (!selectedContractor) {
-      alert('Please select a contractor');
+      showError('Please select a contractor');
       return;
     }
 
     if (!selectedDate) {
-      alert('Please select a date');
+      showError('Please select a date');
       return;
     }
 
     if (timeSlots.length === 0) {
-      alert('Please add at least one time slot');
+      showError('Please add at least one time slot');
       return;
     }
 
     // Validate time slots
     for (const slot of timeSlots) {
       if (!slot.start || !slot.end) {
-        alert('Please fill in all time slots');
+        showError('Please fill in all time slots');
         return;
       }
       if (slot.start >= slot.end) {
-        alert('Start time must be before end time');
+        showError('Start time must be before end time');
         return;
       }
     }
@@ -2382,7 +2409,7 @@ const SpecificDateAvailabilityManagement = () => {
     setSaving(true);
     try {
       await firebase.setSpecificDateAvailability(selectedContractor, selectedDate, timeSlots);
-      alert('Date availability saved successfully!');
+      showSuccess('Date availability saved successfully!');
       
       // Reset form
       setSelectedDate('');
@@ -2394,7 +2421,7 @@ const SpecificDateAvailabilityManagement = () => {
       }
     } catch (error) {
       console.error('Error saving date availability:', error);
-      alert('Failed to save date availability. Please try again.');
+      showError(error.message || 'Failed to save date availability. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -2407,11 +2434,11 @@ const SpecificDateAvailabilityManagement = () => {
 
     try {
       await firebase.deleteSpecificDateAvailability(selectedContractor, date);
-      alert('Date availability removed successfully!');
+      showSuccess('Date availability removed successfully!');
       loadExistingDates();
     } catch (error) {
       console.error('Error deleting date availability:', error);
-      alert('Failed to remove date availability. Please try again.');
+      showError(error.message || 'Failed to remove date availability. Please try again.');
     }
   };
 
@@ -3125,6 +3152,7 @@ const NotificationTestCenter = () => {
 };// Calendar and Scheduling Components
 const ScheduleView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [currentView, setCurrentView] = useState('calendar');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3150,6 +3178,7 @@ const ScheduleView = () => {
       setEvents(eventsData);
     } catch (error) {
       console.error('Error loading events:', error);
+      showError('Failed to load events');
     } finally {
       setLoading(false);
     }
@@ -3158,19 +3187,22 @@ const ScheduleView = () => {
   const handleCreateEvent = async (eventData) => {
     try {
       await firebase.createScheduleEvent(eventData);
+      showSuccess('Event created successfully!');
       loadEvents();
     } catch (error) {
       console.error('Error creating event:', error);
-      alert(error.message);
+      showError(error.message || 'Failed to create event. Please try again.');
     }
   };
 
   const handleUpdateEvent = async (eventId, updates) => {
     try {
       await firebase.updateScheduleEvent(eventId, updates);
+      showSuccess('Event updated successfully!');
       loadEvents();
     } catch (error) {
       console.error('Error updating event:', error);
+      showError(error.message || 'Failed to update event. Please try again.');
     }
   };
 
@@ -6483,6 +6515,7 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
 // Invoice Components
 const InvoicesView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
@@ -6505,6 +6538,7 @@ const InvoicesView = () => {
       setInvoices(invoicesData);
     } catch (error) {
       console.error('Error loading invoices:', error);
+      showError('Failed to load invoices');
     } finally {
       setLoading(false);
     }
@@ -6513,9 +6547,12 @@ const InvoicesView = () => {
   const handleCreateInvoice = async (invoiceData) => {
     try {
       await firebase.createInvoice(invoiceData);
+      showSuccess('Invoice created successfully!');
       loadInvoices();
+      setShowCreateInvoice(false);
     } catch (error) {
       console.error('Error creating invoice:', error);
+      showError(error.message || 'Failed to create invoice. Please try again.');
     }
   };
 
@@ -8313,6 +8350,7 @@ const CalendarExportModal = ({ isOpen, onClose }) => {
 // Add to existing ScheduleView component
 const ScheduleViewEnhanced = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [currentView, setCurrentView] = useState('calendar');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8339,6 +8377,7 @@ const ScheduleViewEnhanced = () => {
       setEvents(eventsData);
     } catch (error) {
       console.error('Error loading events:', error);
+      showError('Failed to load events');
     } finally {
       setLoading(false);
     }
@@ -8347,19 +8386,22 @@ const ScheduleViewEnhanced = () => {
   const handleCreateEvent = async (eventData) => {
     try {
       await firebase.createScheduleEvent(eventData);
+      showSuccess('Event created successfully!');
       loadEvents();
     } catch (error) {
       console.error('Error creating event:', error);
-      alert(error.message);
+      showError(error.message || 'Failed to create event. Please try again.');
     }
   };
 
   const handleUpdateEvent = async (eventId, updates) => {
     try {
       await firebase.updateScheduleEvent(eventId, updates);
+      showSuccess('Event updated successfully!');
       loadEvents();
     } catch (error) {
       console.error('Error updating event:', error);
+      showError(error.message || 'Failed to update event. Please try again.');
     }
   };
 
@@ -9415,6 +9457,7 @@ const CreateJobModal = ({ isOpen, onClose, onSubmit }) => {
 
 // Dashboard Views
 const AdminDashboard = ({ setCurrentView }) => {
+  const { showSuccess, showError } = useToast();
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -9442,12 +9485,30 @@ const AdminDashboard = ({ setCurrentView }) => {
     }
   };
 
-  const handleCreateJob = async (jobData) => {
+  const handleCreateJob = async (formData) => {
     try {
+      // Transform form data to match Firebase schema
+      const jobData = {
+        title: formData.title,
+        description: formData.description,
+        clientName: formData.client,
+        clientEmail: formData.clientEmail,
+        status: 'pending',
+        priority: formData.priority || 'medium',
+        dueDate: formData.dueDate || null,
+        totalAmount: formData.value ? parseFloat(formData.value) : null,
+        budget: formData.value ? parseFloat(formData.value) : null,
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : null,
+        progress: 0
+      };
+
       await firebase.createJob(jobData);
+      showSuccess('Job created successfully!');
       loadDashboardData();
+      setShowCreateJob(false);
     } catch (error) {
       console.error('Error creating job:', error);
+      showError(error.message || 'Failed to create job. Please try again.');
     }
   };
 
@@ -9772,6 +9833,7 @@ const ContractorDashboard = ({ setCurrentView }) => {
 // Additional Views
 const JobsView = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateJob, setShowCreateJob] = useState(false);
@@ -9800,12 +9862,30 @@ const JobsView = () => {
     }
   };
 
-  const handleCreateJob = async (jobData) => {
+  const handleCreateJob = async (formData) => {
     try {
+      // Transform form data to match Firebase schema
+      const jobData = {
+        title: formData.title,
+        description: formData.description,
+        clientName: formData.client,
+        clientEmail: formData.clientEmail,
+        status: 'pending',
+        priority: formData.priority || 'medium',
+        dueDate: formData.dueDate || null,
+        totalAmount: formData.value ? parseFloat(formData.value) : null,
+        budget: formData.value ? parseFloat(formData.value) : null,
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : null,
+        progress: 0
+      };
+
       await firebase.createJob(jobData);
+      showSuccess('Job created successfully!');
       loadJobs();
+      setShowCreateJob(false);
     } catch (error) {
       console.error('Error creating job:', error);
+      showError(error.message || 'Failed to create job. Please try again.');
     }
   };
 
@@ -9867,6 +9947,7 @@ const JobsView = () => {
 
 // Quote Requests View for Admin
 const QuoteRequestsView = () => {
+  const { showSuccess, showError } = useToast();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState(null);
@@ -9882,6 +9963,7 @@ const QuoteRequestsView = () => {
       setQuotes(quotesData);
     } catch (error) {
       console.error('Error loading quote requests:', error);
+      showError('Failed to load quote requests');
     } finally {
       setLoading(false);
     }
@@ -9890,9 +9972,11 @@ const QuoteRequestsView = () => {
   const handleStatusUpdate = async (quoteId, newStatus) => {
     try {
       await firebase.updateQuoteRequest(quoteId, { status: newStatus });
+      showSuccess('Quote status updated successfully!');
       loadQuotes();
     } catch (error) {
       console.error('Error updating quote request:', error);
+      showError(error.message || 'Failed to update quote status. Please try again.');
     }
   };
 
@@ -10240,6 +10324,7 @@ const CreateClientModal = ({ isOpen, onClose, onSubmit }) => {
 };
 
 const ClientsView = () => {
+  const { showSuccess, showError } = useToast();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -10254,6 +10339,7 @@ const ClientsView = () => {
       setClients(clientsData);
     } catch (error) {
       console.error('Error loading clients:', error);
+      showError('Failed to load clients');
     } finally {
       setLoading(false);
     }
@@ -10262,9 +10348,12 @@ const ClientsView = () => {
   const handleCreateClient = async (clientData) => {
     try {
       await firebase.createClient(clientData);
+      showSuccess('Client created successfully!');
       loadClients();
+      setShowCreateClient(false);
     } catch (error) {
       console.error('Error creating client:', error);
+      showError(error.message || 'Failed to create client. Please try again.');
       throw error;
     }
   };
