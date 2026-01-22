@@ -1,22 +1,5 @@
-// API endpoint for sending push notifications
-import { initializeApp } from 'firebase/app';
-import { getMessaging } from 'firebase/messaging';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
-
-// Firebase Admin SDK configuration (you'll need to set up Firebase Admin SDK)
-const firebaseConfig = {
-  apiKey: "AIzaSyBjHLhECxsAW8DWN63tTVZSCExpT33tFUg",
-  authDomain: "lifeline-37sh6.firebaseapp.com",
-  projectId: "lifeline-37sh6",
-  storageBucket: "lifeline-37sh6.firebasestorage.app",
-  messagingSenderId: "24849207864",
-  appId: "1:24849207864:web:ddfeef6f0efa16135c0ccd"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-const db = getFirestore(app);
+// API endpoint for sending push notifications using Firebase Admin SDK
+import { adminFirestore, adminMessaging } from './firebase-admin.js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -80,8 +63,8 @@ export default async function handler(req, res) {
       }
     };
 
-    // Send the notification
-    const response = await messaging.send(message);
+    // Send the notification using Firebase Admin SDK
+    const response = await adminMessaging.send(message);
     
     console.log('Successfully sent message:', response);
     
@@ -101,31 +84,29 @@ export default async function handler(req, res) {
   }
 }
 
-// Helper function to get user's FCM token
+// Helper function to get user's FCM token using Firebase Admin SDK
 async function getUserFCMToken(userId, userEmail) {
   try {
-    let userQuery;
+    let userDoc;
     
     if (userId) {
       // Query by user ID
-      userQuery = query(
-        collection(db, 'users'),
-        where('__name__', '==', userId)
-      );
+      userDoc = await adminFirestore.collection('users').doc(userId).get();
     } else if (userEmail) {
       // Query by email
-      userQuery = query(
-        collection(db, 'users'),
-        where('email', '==', userEmail)
-      );
+      const snapshot = await adminFirestore.collection('users')
+        .where('email', '==', userEmail)
+        .limit(1)
+        .get();
+      
+      if (!snapshot.empty) {
+        userDoc = snapshot.docs[0];
+      }
     } else {
       return null;
     }
 
-    const querySnapshot = await getDocs(userQuery);
-    
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
+    if (userDoc && userDoc.exists) {
       const userData = userDoc.data();
       return userData.fcmToken;
     }
@@ -160,7 +141,7 @@ export async function sendNotificationToUsers(userEmails, notification, data) {
           }
         };
 
-        const response = await messaging.send(message);
+        const response = await adminMessaging.send(message);
         results.push({ email, success: true, messageId: response });
       } else {
         results.push({ email, success: false, error: 'No FCM token found' });
@@ -177,16 +158,14 @@ export async function sendNotificationToUsers(userEmails, notification, data) {
 // Helper function to send notification to all users with a specific role
 export async function sendNotificationToRole(role, notification, data) {
   try {
-    const usersQuery = query(
-      collection(db, 'users'),
-      where('role', '==', role),
-      where('pushNotificationsEnabled', '==', true)
-    );
+    const snapshot = await adminFirestore.collection('users')
+      .where('role', '==', role)
+      .where('pushNotificationsEnabled', '==', true)
+      .get();
 
-    const querySnapshot = await getDocs(usersQuery);
     const results = [];
 
-    for (const doc of querySnapshot.docs) {
+    for (const doc of snapshot.docs) {
       const userData = doc.data();
       
       if (userData.fcmToken) {
@@ -204,7 +183,7 @@ export async function sendNotificationToRole(role, notification, data) {
           }
         };
 
-        const response = await messaging.send(message);
+        const response = await adminMessaging.send(message);
         results.push({ 
           email: userData.email, 
           success: true, 
